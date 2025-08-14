@@ -140,7 +140,7 @@ export default function Home() {
                       Prompt Used:
                     </h4>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      "{result.data.prompt}"
+                      &ldquo;{result.data.prompt}&rdquo;
                     </p>
                   </div>
                 </div>
