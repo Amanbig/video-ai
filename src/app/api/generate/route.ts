@@ -1,20 +1,15 @@
-import RunwayML, { TaskFailedError } from '@runwayml/sdk';
 import { NextRequest, NextResponse } from 'next/server';
-
-const client = new RunwayML();
+import Bytez from 'bytez.js';
 
 interface RequestBody {
   prompt: string;
-  imageRatio?: '1360:768' | '1024:1024' | '1280:720' | '720:1280' | '1920:1080' | '1080:1920' | '1080:1080' | '1168:880' | '1440:1080' | '1080:1440' | '1808:768' | '2112:912' | '720:720' | '960:720' | '720:960' | '1680:720';
-  videoRatio?: '1280:720' | '720:1280' | '1104:832' | '832:1104' | '960:960' | '1584:672' | '1280:768' | '768:1280';
-  videoPrompt?: string; // Optional different prompt for video generation
 }
 
 export async function POST(request: NextRequest) {
   try {
     // Parse and validate request body
     const body: RequestBody = await request.json();
-    
+
     if (!body.prompt || typeof body.prompt !== 'string') {
       return NextResponse.json(
         { error: 'Invalid or missing prompt' },
@@ -22,93 +17,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const imageRatio = body.imageRatio || '1360:768';
-    const videoRatio = body.videoRatio || '1280:720';
-    const videoPrompt = body.videoPrompt || body.prompt;
+    console.log('Starting text-to-video generation with prompt:', body.prompt);
 
-    console.log('Starting text-to-image generation with prompt:', body.prompt);
+    // Initialize Bytez SDK
+    const sdk = new Bytez(process.env.BYTEZ_KEY!);
+    const model = sdk.model("ali-vilab/text-to-video-ms-1.7b");
 
-    // Task 1: Generate image from text
-    const imageTask = await client.textToImage
-      .create({
-        model: 'gen4_image',
-        promptText: body.prompt,
-        ratio: imageRatio,
-      })
-      .waitForTaskOutput();
+    // Generate video from text
+    const { error, output } = await model.run(body.prompt);
 
-    console.log('Image generation completed:', imageTask);
-
-    // Check if image generation was successful
-    if (!imageTask.output || !imageTask.output.length) {
+    if (error) {
+      console.error('Bytez API error:', error);
       return NextResponse.json(
-        { error: 'Image generation failed - no output received' },
-        { status: 500 }
-      );
-    }
-
-    const generatedImageUrl = imageTask.output[0];
-    console.log('Generated image URL:', generatedImageUrl);
-    console.log('Starting image-to-video generation...');
-
-    // Task 2: Generate video from the created image
-    const videoTask = await client.imageToVideo
-      .create({
-        model: 'gen4_turbo',
-        promptImage: generatedImageUrl,
-        promptText: videoPrompt,
-        ratio: videoRatio,
-      })
-      .waitForTaskOutput();
-
-    console.log('Video generation completed:', videoTask);
-
-    // Check if video generation was successful
-    if (!videoTask.output || !videoTask.output.length) {
-      return NextResponse.json(
-        { 
-          error: 'Video generation failed - no output received',
-          imageUrl: generatedImageUrl // Return the image URL in case it's useful
+        {
+          error: 'Video generation failed',
+          details: error
         },
         { status: 500 }
       );
     }
 
-    // Return both outputs
+    if (!output) {
+      return NextResponse.json(
+        { error: 'Video generation failed - no output received' },
+        { status: 500 }
+      );
+    }
+
+    console.log('Video generation completed successfully');
+
+    // Return the generated video
     return NextResponse.json({
       success: true,
       data: {
-        originalPrompt: body.prompt,
-        videoPrompt: videoPrompt,
-        imageUrl: generatedImageUrl,
-        videoUrl: videoTask.output[0],
-        imageTask: {
-          id: imageTask.id,
-          status: imageTask.status,
-          ratio: imageRatio
-        },
-        videoTask: {
-          id: videoTask.id,
-          status: videoTask.status,
-          ratio: videoRatio
-        }
+        prompt: body.prompt,
+        videoUrl: output,
+        generatedAt: new Date().toISOString()
       }
     });
 
   } catch (error) {
-    console.error('Error in text-to-image-to-video pipeline:', error);
-
-    // Handle specific RunwayML errors
-    if (error instanceof TaskFailedError) {
-      return NextResponse.json(
-        { 
-          error: 'Task failed',
-          details: error.message,
-        //   taskId: error.task?.id 
-        },
-        { status: 500 }
-      );
-    }
+    console.error('Error in text-to-video generation:', error);
 
     // Handle JSON parsing errors
     if (error instanceof SyntaxError) {
@@ -120,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Handle other errors
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -132,22 +81,16 @@ export async function POST(request: NextRequest) {
 // Optional: Add a GET handler for API documentation
 export async function GET() {
   return NextResponse.json({
-    message: 'RunwayML Text-to-Image-to-Video API',
+    message: 'Bytez Text-to-Video API',
     usage: {
       method: 'POST',
       contentType: 'application/json',
       body: {
-        prompt: 'string (required) - Text prompt for image and video generation',
-        imageRatio: 'string (optional) - Image aspect ratio: 1360:768 | 1024:1024 | 1280:720 | 720:1280 | 1920:1080 | 1080:1920 | 1080:1080 | 1168:880 | 1440:1080 | 1080:1440 | 1808:768 | 2112:912 | 720:720 | 960:720 | 720:960 | 1680:720',
-        videoRatio: 'string (optional) - Video aspect ratio: 1280:720 | 720:1280 | 1104:832 | 832:1104 | 960:960 | 1584:672 | 1280:768 | 768:1280',
-        videoPrompt: 'string (optional) - Different prompt for video generation, defaults to main prompt'
+        prompt: 'string (required) - Text prompt for video generation'
       }
     },
     example: {
-      prompt: 'A majestic dragon soaring through cloudy skies',
-      imageRatio: '1920:1080',
-      videoRatio: '1280:720',
-      videoPrompt: 'The dragon slowly flaps its wings and breathes fire'
+      prompt: 'A cat playing with a rose in a beautiful garden'
     }
   });
 }

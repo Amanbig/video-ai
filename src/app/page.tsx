@@ -5,20 +5,9 @@ import { useState } from 'react';
 interface GenerationResult {
   success: boolean;
   data?: {
-    originalPrompt: string;
-    videoPrompt: string;
-    imageUrl: string;
+    prompt: string;
     videoUrl: string;
-    imageTask: {
-      id: string;
-      status: string;
-      ratio: string;
-    };
-    videoTask: {
-      id: string;
-      status: string;
-      ratio: string;
-    };
+    generatedAt: string;
   };
   error?: string;
   details?: string;
@@ -26,23 +15,8 @@ interface GenerationResult {
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
-  const [videoPrompt, setVideoPrompt] = useState('');
-  const [imageRatio, setImageRatio] = useState('1360:768');
-  const [videoRatio, setVideoRatio] = useState('1280:720');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  const imageRatios = [
-    '1360:768', '1024:1024', '1280:720', '720:1280', '1920:1080',
-    '1080:1920', '1080:1080', '1168:880', '1440:1080', '1080:1440',
-    '1808:768', '2112:912', '720:720', '960:720', '720:960', '1680:720'
-  ];
-
-  const videoRatios = [
-    '1280:720', '720:1280', '1104:832', '832:1104',
-    '960:960', '1584:672', '1280:768', '768:1280'
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,9 +33,6 @@ export default function Home() {
         },
         body: JSON.stringify({
           prompt: prompt.trim(),
-          imageRatio,
-          videoRatio,
-          videoPrompt: videoPrompt.trim() || undefined,
         }),
       });
 
@@ -88,7 +59,7 @@ export default function Home() {
               AI Video Generator
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
-              Transform your ideas into stunning videos using RunwayML
+              Transform your ideas into stunning videos using Bytez AI
             </p>
           </div>
 
@@ -111,71 +82,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* Advanced Options Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 text-sm font-medium"
-              >
-                {showAdvanced ? '▼' : '▶'} Advanced Options
-              </button>
 
-              {/* Advanced Options */}
-              {showAdvanced && (
-                <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div>
-                    <label htmlFor="videoPrompt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Video-specific prompt (optional)
-                    </label>
-                    <textarea
-                      id="videoPrompt"
-                      value={videoPrompt}
-                      onChange={(e) => setVideoPrompt(e.target.value)}
-                      placeholder="The dragon slowly flaps its wings and breathes fire..."
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-600 dark:text-white resize-none"
-                      rows={2}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="imageRatio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Image Ratio
-                      </label>
-                      <select
-                        id="imageRatio"
-                        value={imageRatio}
-                        onChange={(e) => setImageRatio(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-600 dark:text-white"
-                      >
-                        {imageRatios.map((ratio) => (
-                          <option key={ratio} value={ratio}>
-                            {ratio}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label htmlFor="videoRatio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Video Ratio
-                      </label>
-                      <select
-                        id="videoRatio"
-                        value={videoRatio}
-                        onChange={(e) => setVideoRatio(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-600 dark:text-white"
-                      >
-                        {videoRatios.map((ratio) => (
-                          <option key={ratio} value={ratio}>
-                            {ratio}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Submit Button */}
               <button
@@ -204,58 +111,36 @@ export default function Home() {
                     Generation Complete!
                   </h2>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Generated Image */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                        Generated Image
-                      </h3>
-                      <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                        <img
-                          src={result.data.imageUrl}
-                          alt="Generated image"
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        Ratio: {result.data.imageTask.ratio}
-                      </p>
+                  {/* Generated Video */}
+                  <div className="max-w-2xl mx-auto">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 text-center">
+                      Generated Video
+                    </h3>
+                    <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                      <video
+                        src={result.data.videoUrl}
+                        controls
+                        className="w-full h-auto"
+                        preload="metadata"
+                        playsInline
+                        muted
+                        loop
+                      >
+                        Your browser does not support the video tag.
+                      </video>
                     </div>
-
-                    {/* Generated Video */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                        Generated Video
-                      </h3>
-                      <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                        <video
-                          src={result.data.videoUrl}
-                          controls
-                          className="w-full h-auto"
-                          preload="metadata"
-                          playsInline
-                          muted
-                          loop
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        Ratio: {result.data.videoTask.ratio}
-                      </p>
-                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">
+                      Generated on: {new Date(result.data.generatedAt).toLocaleString()}
+                    </p>
                   </div>
 
-                  {/* Prompts Used */}
+                  {/* Prompt Used */}
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                     <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">
-                      Prompts Used:
+                      Prompt Used:
                     </h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      <strong>Image:</strong> {result.data.originalPrompt}
-                    </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      <strong>Video:</strong> {result.data.videoPrompt}
+                      "{result.data.prompt}"
                     </p>
                   </div>
                 </div>
